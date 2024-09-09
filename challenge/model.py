@@ -1,5 +1,4 @@
-
-   
+  
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -12,11 +11,12 @@ from typing import Tuple, Union, List
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
+from sklearn.utils import shuffle
 
 class DelayModel:
 
     def __init__(self):
-        self._model = RandomForestClassifier()  # Model should be saved in this attribute.
+        self._model = RandomForestClassifier()  # El modelo debe guardarse en este atributo.
 
     def preprocess(
         self,
@@ -144,8 +144,17 @@ if __name__ == "__main__":
     # Preprocesar datos
     features, target = model.preprocess(data, target_column='delay')
     
-    # Dividir datos
+    # División de los datos en conjuntos de entrenamiento y validación
+    features = pd.concat([pd.get_dummies(data['OPERA'], prefix='OPERA'),
+                          pd.get_dummies(data['TIPOVUELO'], prefix='TIPOVUELO'),
+                          pd.get_dummies(data['MES'], prefix='MES')], axis=1)
+    target = data['delay']
+    
     x_train, x_test, y_train, y_test = train_test_split(features, target, test_size=0.33, random_state=42)
+    
+    print(f"train shape: {x_train.shape} | test shape: {x_test.shape}")
+    print(y_train.value_counts(normalize=True) * 100)
+    print(y_test.value_counts(normalize=True) * 100)
     
     # Ajustar modelo
     model.fit(x_train, y_train)
@@ -179,7 +188,6 @@ if __name__ == "__main__":
     plt.xlabel("Month", fontsize=12)
     plt.xticks(rotation=90)
     plt.show()
-
     # Distribución por Día de la Semana
     flights_by_day_in_week = data['DIANOM'].value_counts()
     days = flights_by_day_in_week.index
@@ -324,4 +332,4 @@ if __name__ == "__main__":
     plt.ylabel("Delay Rate (%)", fontsize=12)
     plt.xlabel("Period", fontsize=12)
     plt.ylim(0, 7)
-    plt.show()
+    plt.show()  
