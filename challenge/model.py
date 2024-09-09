@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
+from datetime import datetime
 
 warnings.filterwarnings('ignore')
 from typing import Tuple, Union, List
@@ -79,6 +80,62 @@ if __name__ == "__main__":
     # Display data information
     data.info()
     
+    # Generate period of day feature
+    def get_period_of_day(date: str) -> str:
+        date_time = datetime.strptime(date, '%Y-%m-%d %H:%M:%S').time()
+        morning_min = datetime.strptime("05:00", '%H:%M').time()
+        morning_max = datetime.strptime("11:59", '%H:%M').time()
+        afternoon_min = datetime.strptime("12:00", '%H:%M').time()
+        afternoon_max = datetime.strptime("18:59", '%H:%M').time()
+        evening_min = datetime.strptime("19:00", '%H:%M').time()
+        evening_max = datetime.strptime("23:59", '%H:%M').time()
+        night_min = datetime.strptime("00:00", '%H:%M').time()
+        night_max = datetime.strptime("04:59", '%H:%M').time()
+
+        if morning_min <= date_time <= morning_max:
+            return 'mañana'
+        elif afternoon_min <= date_time <= afternoon_max:
+            return 'tarde'
+        elif evening_min <= date_time <= evening_max or night_min <= date_time <= night_max:
+            return 'noche'
+
+    data['period_day'] = data['Fecha-I'].apply(get_period_of_day)
+    
+    # Generate high season feature
+    def is_high_season(fecha: str) -> int:
+        fecha_año = int(fecha.split('-')[0])
+        fecha = datetime.strptime(fecha, '%Y-%m-%d %H:%M:%S')
+        range1_min = datetime.strptime('15-Dec', '%d-%b').replace(year=fecha_año)
+        range1_max = datetime.strptime('31-Dec', '%d-%b').replace(year=fecha_año)
+        range2_min = datetime.strptime('1-Jan', '%d-%b').replace(year=fecha_año)
+        range2_max = datetime.strptime('3-Mar', '%d-%b').replace(year=fecha_año)
+        range3_min = datetime.strptime('15-Jul', '%d-%b').replace(year=fecha_año)
+        range3_max = datetime.strptime('31-Jul', '%d-%b').replace(year=fecha_año)
+        range4_min = datetime.strptime('11-Sep', '%d-%b').replace(year=fecha_año)
+        range4_max = datetime.strptime('30-Sep', '%d-%b').replace(year=fecha_año)
+
+        if ((fecha >= range1_min and fecha <= range1_max) or
+            (fecha >= range2_min and fecha <= range2_max) or
+            (fecha >= range3_min and fecha <= range3_max) or
+            (fecha >= range4_min and fecha <= range4_max)):
+            return 1
+        else:
+            return 0
+
+    data['high_season'] = data['Fecha-I'].apply(is_high_season)
+    
+    # Generate min_diff and delay features
+    def get_min_diff(data):
+        fecha_o = datetime.strptime(data['Fecha-0'], '%Y-%m-%d %H:%M:%S')
+        fecha_i = datetime.strptime(data['Fecha-I'], '%Y-%m-%d %H:%M:%S')
+        min_diff = ((fecha_o - fecha_i).total_seconds()) / 60
+        return min_diff
+
+    data['min_diff'] = data.apply(get_min_diff, axis=1)
+    
+    threshold_in_minutes = 15
+    data['delay'] = np.where(data['min_diff'] > threshold_in_minutes, 1, 0)
+    
     # Initialize model
     model = DelayModel()
     
@@ -142,15 +199,3 @@ if __name__ == "__main__":
     plt.title("Flights by Type")
     plt.ylabel("Flights", fontsize=12)
     plt.xlabel("Type", fontsize=12)
-    plt.show()
-
-    # Distribution by Destination
-    flight_by_destination = data['SIGLADES'].value_counts()
-    plt.figure(figsize=(10, 2))
-    sns.set(style="darkgrid")
-    sns.barplot(x=flight_by_destination.index, y=flight_by_destination.values, color="lightblue", alpha=0.8)
-    plt.title("Flight by Destination")
-    plt.ylabel("Flights", fontsize=12)
-    plt.xlabel("Destination", fontsize=12)
-    plt.xticks(rotation=90)
-    plt.show()
