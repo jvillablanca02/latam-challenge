@@ -1,335 +1,138 @@
   
-import numpy as np
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import warnings
+from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
+from sklearn.metrics import confusion_matrix, classification_report
+import xgboost as xgb
+from xgboost import plot_importance
+from sklearn.linear_model import LogisticRegression
 from datetime import datetime
 
-warnings.filterwarnings('ignore')
-from typing import Tuple, Union, List
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
-from sklearn.utils import shuffle
+# Función para calcular la tasa de retraso por columna
+def get_rate_from_column(data, column):
+    delays = data[data['delay'] == 1][column].value_counts()
+    total = data[column].value_counts()
+    rates = (delays / total).fillna(0) * 100
+    return rates.reset_index().rename(columns={column: 'Tasa (%)', 'index': column})
 
-class DelayModel:
+# Cargar y preparar los datos
+data = pd.read_csv('data/data.csv')  
+training_data = shuffle(data[['OPERA', 'MES', 'TIPOVUELO', 'SIGLADES', 'DIANOM', 'delay']], random_state=111)
+features = pd.concat([
+    pd.get_dummies(data['OPERA'], prefix='OPERA'),
+    pd.get_dummies(data['TIPOVUELO'], prefix='TIPOVUELO'),
+    pd.get_dummies(data['MES'], prefix='MES')
+], axis=1)
+target = data['delay']
+x_train2, x_test2, y_train2, y_test2 = train_test_split(features, target, test_size=0.33, random_state=42)
 
-    def __init__(self):
-        self._model = RandomForestClassifier()  # El modelo debe guardarse en este atributo.
-
-    def preprocess(
-        self,
-        data: pd.DataFrame,
-        target_column: str = None
-    ) -> Union[Tuple[pd.DataFrame, pd.DataFrame], pd.DataFrame]:
-        """
-        Prepara los datos en bruto para entrenamiento o predicción.
-
-        Args:
-            data (pd.DataFrame): datos en bruto.
-            target_column (str, opcional): si se establece, se devuelve el objetivo.
-
-        Returns:
-            Tuple[pd.DataFrame, pd.DataFrame]: características y objetivo.
-            o
-            pd.DataFrame: características.
-        """
-        # Ejemplo de preprocesamiento: llenar valores faltantes y codificar variables categóricas
-        data = data.fillna(method='ffill')
-        if target_column:
-            features = data.drop(columns=[target_column])
-            target = data[target_column]
-            return features, target
-        else:
-            return data
-
-    def fit(
-        self,
-        features: pd.DataFrame,
-        target: pd.DataFrame
-    ) -> None:
-        """
-        Ajusta el modelo con datos preprocesados.
-
-        Args:
-            features (pd.DataFrame): datos preprocesados.
-            target (pd.DataFrame): objetivo.
-        """
-        self._model.fit(features, target)
-
-    def predict(
-        self,
-        features: pd.DataFrame
-    ) -> List[int]:
-        """
-        Predice retrasos para nuevos vuelos.
-
-        Args:
-            features (pd.DataFrame): datos preprocesados.
-        
-        Returns:
-            List[int]: objetivos predichos.
-        """
-        predictions = self._model.predict(features)
-        return predictions.tolist()
-
-# Ejemplo de uso
-if __name__ == "__main__":
-    # Cargar datos
-    data = pd.read_csv('../data/data.csv')
-    
-    # Mostrar información de los datos
-    data.info()
-    
-    # Generar característica de período del día
-    def get_period_of_day(date: str) -> str:
-        date_time = datetime.strptime(date, '%Y-%m-%d %H:%M:%S').time()
-        morning_min = datetime.strptime("05:00", '%H:%M').time()
-        morning_max = datetime.strptime("11:59", '%H:%M').time()
-        afternoon_min = datetime.strptime("12:00", '%H:%M').time()
-        afternoon_max = datetime.strptime("18:59", '%H:%M').time()
-        evening_min = datetime.strptime("19:00", '%H:%M').time()
-        evening_max = datetime.strptime("23:59", '%H:%M').time()
-        night_min = datetime.strptime("00:00", '%H:%M').time()
-        night_max = datetime.strptime("04:59", '%H:%M').time()
-
-        if morning_min <= date_time <= morning_max:
-            return 'mañana'
-        elif afternoon_min <= date_time <= afternoon_max:
-            return 'tarde'
-        elif evening_min <= date_time <= evening_max or night_min <= date_time <= night_max:
-            return 'noche'
-
-    data['period_day'] = data['Fecha-I'].apply(get_period_of_day)
-    
-    # Generar característica de temporada alta
-    def is_high_season(fecha: str) -> int:
-        fecha_año = int(fecha.split('-')[0])
-        fecha = datetime.strptime(fecha, '%Y-%m-%d %H:%M:%S')
-        range1_min = datetime.strptime('15-Dec', '%d-%b').replace(year=fecha_año)
-        range1_max = datetime.strptime('31-Dec', '%d-%b').replace(year=fecha_año)
-        range2_min = datetime.strptime('1-Jan', '%d-%b').replace(year=fecha_año)
-        range2_max = datetime.strptime('3-Mar', '%d-%b').replace(year=fecha_año)
-        range3_min = datetime.strptime('15-Jul', '%d-%b').replace(year=fecha_año)
-        range3_max = datetime.strptime('31-Jul', '%d-%b').replace(year=fecha_año)
-        range4_min = datetime.strptime('11-Sep', '%d-%b').replace(year=fecha_año)
-        range4_max = datetime.strptime('30-Sep', '%d-%b').replace(year=fecha_año)
-
-        if ((fecha >= range1_min and fecha <= range1_max) or
-            (fecha >= range2_min and fecha <= range2_max) or
-            (fecha >= range3_min and fecha <= range3_max) or
-            (fecha >= range4_min and fecha <= range4_max)):
-            return 1
-        else:
-            return 0
-
-    data['high_season'] = data['Fecha-I'].apply(is_high_season)
-    
-    # Generar características de min_diff y delay
-    def get_min_diff(data):
-        fecha_o = datetime.strptime(data['Fecha-O'], '%Y-%m-%d %H:%M:%S')
-        fecha_i = datetime.strptime(data['Fecha-I'], '%Y-%m-%d %H:%M:%S')
-        min_diff = ((fecha_o - fecha_i).total_seconds()) / 60
-        return min_diff
-
-    data['min_diff'] = data.apply(get_min_diff, axis=1)
-    
-    threshold_in_minutes = 15
-    data['delay'] = np.where(data['min_diff'] > threshold_in_minutes, 1, 0)
-    
-    # Inicializar modelo
-    model = DelayModel()
-    
-    # Preprocesar datos
-    features, target = model.preprocess(data, target_column='delay')
-    
-    # División de los datos en conjuntos de entrenamiento y validación
-    features = pd.concat([pd.get_dummies(data['OPERA'], prefix='OPERA'),
-                          pd.get_dummies(data['TIPOVUELO'], prefix='TIPOVUELO'),
-                          pd.get_dummies(data['MES'], prefix='MES')], axis=1)
-    target = data['delay']
-    
-    x_train, x_test, y_train, y_test = train_test_split(features, target, test_size=0.33, random_state=42)
-    
-    print(f"train shape: {x_train.shape} | test shape: {x_test.shape}")
-    print(y_train.value_counts(normalize=True) * 100)
-    print(y_test.value_counts(normalize=True) * 100)
-    
-    # Ajustar modelo
-    model.fit(x_train, y_train)
-    
-    # Predecir
-    predictions = model.predict(x_test)
-    
-    # Evaluar
-    accuracy = accuracy_score(y_test, predictions)
-    print(f"Model accuracy: {accuracy}")
-    
-    # Análisis de Datos: Primera Vista
-    # Distribución por Día
-    flights_by_day = data['DIA'].value_counts()
-    plt.figure(figsize=(18, 2))
+# Visualización de tasas de retraso
+def plot_delay_rate(data, column, title, ylim):
+    rate = get_rate_from_column(data, column)
+    plt.figure(figsize=(10, 5))
     sns.set(style="darkgrid")
-    sns.barplot(x=flights_by_day.index, y=flights_by_day.values, color="lightblue", alpha=0.3)
-    plt.title("Flights by Day")
-    plt.ylabel("Flights", fontsize=12)
-    plt.xlabel("Day", fontsize=12)
-    plt.xticks(rotation=90)
+    bar_plot = sns.barplot(x=column, y='Tasa (%)', data=rate, alpha=0.75)
+    plt.title(title, fontsize=14)
+    plt.ylabel('Delay Rate [%]', fontsize=12)
+    plt.xlabel(column, fontsize=12)
+    plt.ylim(0, ylim)
+    for index, value in enumerate(rate['Tasa (%)']):
+        bar_plot.text(index, value, f'{value:.2f}', color='black', ha="center")
     plt.show()
 
-    # Distribución por Mes
-    flights_by_month = data['MES'].value_counts()
-    plt.figure(figsize=(18, 2))
-    sns.set(style="darkgrid")
-    sns.barplot(x=flights_by_month.index, y=flights_by_month.values, color="lightblue", alpha=0.8)
-    plt.title("Flights by Month")
-    plt.ylabel("Flights", fontsize=12)
-    plt.xlabel("Month", fontsize=12)
-    plt.xticks(rotation=90)
-    plt.show()
-    # Distribución por Día de la Semana
-    flights_by_day_in_week = data['DIANOM'].value_counts()
-    days = flights_by_day_in_week.index
-    values_by_day = flights_by_day_in_week.values
-    plt.figure(figsize=(18, 2))
-    sns.set(style="darkgrid")
-    sns.barplot(x=days, y=values_by_day, color="lightblue", alpha=0.8)
-    plt.title("Flights by Day in Week")
-    plt.ylabel("Flights", fontsize=12)
-    plt.xlabel("Day in Week", fontsize=12)
-    plt.xticks(rotation=90)
-    plt.show()
+plot_delay_rate(data, 'MES', 'Delay Rate by Month', 10)
+plot_delay_rate(data, 'DIANOM', 'Delay Rate by Day', 7)
+plot_delay_rate(data, 'high_season', 'Delay Rate by Season', 6)
+plot_delay_rate(data, 'TIPOVUELO', 'Delay Rate by Flight Type', 7)
 
-    # Distribución por Tipo de Vuelo
-    flights_by_type = data['TIPOVUELO'].value_counts()
-    plt.figure(figsize=(10, 2))
-    sns.set(style="darkgrid")
-    sns.barplot(x=flights_by_type.index, y=flights_by_type.values, alpha=0.9)
-    plt.title("Flights by Type")
-    plt.ylabel("Flights", fontsize=12)
-    plt.xlabel("Type", fontsize=12)
-    plt.show()
+# Modelo XGBoost con balance
+scale = len(y_train2[y_train2 == 0]) / len(y_train2[y_train2 == 1])
+xgb_model_2 = xgb.XGBClassifier(random_state=1, learning_rate=0.01, scale_pos_weight=scale)
+xgb_model_2.fit(x_train2, y_train2)
+xgboost_y_preds_2 = xgb_model_2.predict(x_test2)
 
-    # Distribución por Destino
-    flight_by_destination = data['SIGLADES'].value_counts()
-    plt.figure(figsize=(10, 2))
-    sns.set(style="darkgrid")
-    sns.barplot(x=flight_by_destination.index, y=flight_by_destination.values, color="lightblue", alpha=0.8)
-    plt.title("Flight by Destination")
-    plt.ylabel("Flights", fontsize=12)
-    plt.xlabel("Destination", fontsize=12)
-    plt.xticks(rotation=90)
-    plt.show()
+# Reporte de clasificación y matriz de confusión para XGBoost con balance
+print("XGBoost with Balance Classification Report:")
+print(classification_report(y_test2, xgboost_y_preds_2))
+xgb_cm_2 = confusion_matrix(y_test2, xgboost_y_preds_2)
+sns.heatmap(xgb_cm_2, annot=True, fmt='d', cmap='Blues')
+plt.title('XGBoost with Balance Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.show()
 
-    # Análisis de Datos: Segunda Vista
-    def get_rate_from_column(data, column):
-        delays = {}
-        for _, row in data.iterrows():
-            if row['delay'] == 1:
-                if row[column] not in delays:
-                    delays[row[column]] = 1
-                else:
-                    delays[row[column]] += 1
-        total = data[column].value_counts().to_dict()
-        rates = {}
-        for name, total in total.items():
-            if name in delays:
-                rates[name] = round((delays[name] / total) * 100, 2)
-            else:
-                rates[name] = 0
-        return pd.DataFrame.from_dict(data=rates, orient='index', columns=['Tasa (%)'])
+# Importancia de características para XGBoost con balance
+plot_importance(xgb_model_2)
+plt.title('Feature Importance - XGBoost with Balance')
+plt.show()
 
-    # Tasa de retraso por destino
-    destination_rate = get_rate_from_column(data, 'SIGLADES')
-    destination_rate_values = data['SIGLADES'].value_counts().index
+# Modelo XGBoost sin balance
+xgb_model_3 = xgb.XGBClassifier(random_state=1, learning_rate=0.01)
+xgb_model_3.fit(x_train2, y_train2)
+xgboost_y_preds_3 = xgb_model_3.predict(x_test2)
 
-    plt.figure(figsize=(20, 5))
-    sns.set(style="darkgrid")
-    sns.barplot(destination_rate_values, destination_rate['Tasa (%)'], alpha=0.75)
-    plt.title("Delay Rate by Destination")
-    plt.ylabel("Delay Rate (%)", fontsize=12)
-    plt.xlabel("Destination", fontsize=12)
-    plt.xticks(rotation=90)
-    plt.show()
+# Reporte de clasificación y matriz de confusión para XGBoost sin balance
+print("XGBoost without Balance Classification Report:")
+print(classification_report(y_test2, xgboost_y_preds_3))
+xgb_cm_3 = confusion_matrix(y_test2, xgboost_y_preds_3)
+sns.heatmap(xgb_cm_3, annot=True, fmt='d', cmap='Blues')
+plt.title('XGBoost without Balance Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.show()
 
-    # Tasa de retraso por aerolínea
-    airlines_rate = get_rate_from_column(data, 'OPERA')
-    airlines_rate_values = data['OPERA'].value_counts().index
+# Modelo de Regresión Logística con balance
+n_y0 = len(y_train2[y_train2 == 0])
+n_y1 = len(y_train2[y_train2 == 1])
+reg_model_2 = LogisticRegression(class_weight={1: n_y0/len(y_train2), 0: n_y1/len(y_train2)})
+reg_model_2.fit(x_train2, y_train2)
+reg_y_preds_2 = reg_model_2.predict(x_test2)
 
-    plt.figure(figsize=(20, 5))
-    sns.set(style="darkgrid")
-    sns.barplot(airlines_rate_values, airlines_rate['Tasa (%)'], alpha=0.75)
-    plt.title("Delay Rate by Airline")
-    plt.ylabel("Delay Rate (%)", fontsize=12)
-    plt.xlabel("Airline", fontsize=12)
-    plt.xticks(rotation=90)
-    plt.show()
+# Reporte de clasificación y matriz de confusión para Regresión Logística con balance
+print("Logistic Regression with Balance Classification Report:")
+print(classification_report(y_test2, reg_y_preds_2))
+reg_cm_2 = confusion_matrix(y_test2, reg_y_preds_2)
+sns.heatmap(reg_cm_2, annot=True, fmt='d', cmap='Blues')
+plt.title('Logistic Regression with Balance Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.show()
 
-    # Tasa de retraso por mes
-    month_rate = get_rate_from_column(data, 'MES')
-    month_rate_values = data['MES'].value_counts().index
+# Modelo de Regresión Logística sin balance
+reg_model_3 = LogisticRegression()
+reg_model_3.fit(x_train2, y_train2)
+reg_y_preds_3 = reg_model_3.predict(x_test2)
 
-    plt.figure(figsize=(20, 5))
-    sns.set(style="darkgrid")
-    sns.barplot(month_rate_values, month_rate['Tasa (%)'], color='blue', alpha=0.75)
-    plt.title("Delay Rate by Month")
-    plt.ylabel("Delay Rate (%)", fontsize=12)
-    plt.xlabel("Month", fontsize=12)
-    plt.xticks(rotation=90)
-    plt.ylim(0, 10)
-    plt.show()
+# Reporte de clasificación y matriz de confusión para Regresión Logística sin balance
+print("Logistic Regression without Balance Classification Report:")
+print(classification_report(y_test2, reg_y_preds_3))
+reg_cm_3 = confusion_matrix(y_test2, reg_y_preds_3)
+sns.heatmap(reg_cm_3, annot=True, fmt='d', cmap='Blues')
+plt.title('Logistic Regression without Balance Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.show()
 
-    # Tasa de retraso por día
-    days_rate = get_rate_from_column(data, 'DIANOM')
-    days_rate_values = data['DIANOM'].value_counts().index
+# Función para determinar si hay retraso
+def is_delay(departure, arrival):
+    min_diff = (arrival - departure).total_seconds() / 60
+    return 1 if min_diff > 15 else 0
 
-    plt.figure(figsize=(20, 5))
-    sns.set(style="darkgrid")
-    sns.barplot(days_rate_values, days_rate['Tasa (%)'], color='blue', alpha=0.75)
-    plt.title("Delay Rate by Day")
-    plt.ylabel("Delay Rate (%)", fontsize=12)
-    plt.xlabel("Days", fontsize=12)
-    plt.xticks(rotation=90)
-    plt.ylim(0, 7)
-    plt.show()
+# Ejemplo de uso de la función is_delay
+departure_time = datetime.strptime('2023-09-09 14:30:00', '%Y-%m-%d %H:%M:%S')
+arrival_time = datetime.strptime('2023-09-09 14:50:00', '%Y-%m-%d %H:%M:%S')
+delay_status = is_delay(departure_time, arrival_time)
+print(f"Delay status: {delay_status}")
 
-    # Tasa de retraso por temporada alta
-    high_season_rate = get_rate_from_column(data, 'high_season')
-    high_season_rate_values = data['high_season'].value_counts().index
-
-    plt.figure(figsize=(5, 2))
-    sns.set(style="darkgrid")
-    sns.barplot(['no', 'yes'], high_season_rate['Tasa (%)'])
-    plt.title("Delay Rate by Season")
-    plt.ylabel("Delay Rate (%)", fontsize=12)
-    plt.xlabel("High Season", fontsize=12)
-    plt.xticks(rotation=90)
-    plt.ylim(0, 7)
-    plt.show()
-
-    # Tasa de retraso por tipo de vuelo
-    flight_type_rate = get_rate_from_column(data, 'TIPOVUELO')
-    flight_type_rate_values = data['TIPOVUELO'].value_counts().index
-
-    plt.figure(figsize=(5, 2))
-    sns.set(style="darkgrid")
-    sns.barplot(flight_type_rate_values, flight_type_rate['Tasa (%)'])
-    plt.title("Delay Rate by Flight Type")
-    plt.ylabel("Delay Rate (%)", fontsize=12)
-    plt.xlabel("Flight Type", fontsize=12)
-    plt.ylim(0, 7)
-    plt.show()
-
-    # Tasa de retraso por período del día
-    period_day_rate = get_rate_from_column(data, 'period_day')
-    period_day_rate_values = data['period_day'].value_counts().index
-
-    plt.figure(figsize=(5, 2))
-    sns.set(style="darkgrid")
-    sns.barplot(period_day_rate_values, period_day_rate['Tasa (%)'])
-    plt.title("Delay Rate by Period of Day")
-    plt.ylabel("Delay Rate (%)", fontsize=12)
-    plt.xlabel("Period", fontsize=12)
-    plt.ylim(0, 7)
-    plt.show()  
+# Visualización de la importancia de características para Regresión Logística
+coefficients = pd.DataFrame({"Feature": features.columns, "Coefficient": reg_model_3.coef_[0]})
+coefficients = coefficients.sort_values(by="Coefficient", ascending=False)
+plt.figure(figsize=(10, 8))
+sns.barplot(x="Coefficient", y="Feature", data=coefficients)
+plt.title('Feature Importance - Logistic Regression without Balance')
+plt.show()
+ 
+ 
