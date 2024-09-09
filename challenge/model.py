@@ -1,3 +1,5 @@
+
+   
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -22,18 +24,18 @@ class DelayModel:
         target_column: str = None
     ) -> Union[Tuple[pd.DataFrame, pd.DataFrame], pd.DataFrame]:
         """
-        Prepare raw data for training or predict.
+        Prepara los datos en bruto para entrenamiento o predicción.
 
         Args:
-            data (pd.DataFrame): raw data.
-            target_column (str, optional): if set, the target is returned.
+            data (pd.DataFrame): datos en bruto.
+            target_column (str, opcional): si se establece, se devuelve el objetivo.
 
         Returns:
-            Tuple[pd.DataFrame, pd.DataFrame]: features and target.
-            or
-            pd.DataFrame: features.
+            Tuple[pd.DataFrame, pd.DataFrame]: características y objetivo.
+            o
+            pd.DataFrame: características.
         """
-        # Example preprocessing: fill missing values and encode categorical variables
+        # Ejemplo de preprocesamiento: llenar valores faltantes y codificar variables categóricas
         data = data.fillna(method='ffill')
         if target_column:
             features = data.drop(columns=[target_column])
@@ -48,11 +50,11 @@ class DelayModel:
         target: pd.DataFrame
     ) -> None:
         """
-        Fit model with preprocessed data.
+        Ajusta el modelo con datos preprocesados.
 
         Args:
-            features (pd.DataFrame): preprocessed data.
-            target (pd.DataFrame): target.
+            features (pd.DataFrame): datos preprocesados.
+            target (pd.DataFrame): objetivo.
         """
         self._model.fit(features, target)
 
@@ -61,26 +63,26 @@ class DelayModel:
         features: pd.DataFrame
     ) -> List[int]:
         """
-        Predict delays for new flights.
+        Predice retrasos para nuevos vuelos.
 
         Args:
-            features (pd.DataFrame): preprocessed data.
+            features (pd.DataFrame): datos preprocesados.
         
         Returns:
-            List[int]: predicted targets.
+            List[int]: objetivos predichos.
         """
         predictions = self._model.predict(features)
         return predictions.tolist()
 
-# Example usage
+# Ejemplo de uso
 if __name__ == "__main__":
-    # Load data
+    # Cargar datos
     data = pd.read_csv('../data/data.csv')
     
-    # Display data information
+    # Mostrar información de los datos
     data.info()
     
-    # Generate period of day feature
+    # Generar característica de período del día
     def get_period_of_day(date: str) -> str:
         date_time = datetime.strptime(date, '%Y-%m-%d %H:%M:%S').time()
         morning_min = datetime.strptime("05:00", '%H:%M').time()
@@ -101,7 +103,7 @@ if __name__ == "__main__":
 
     data['period_day'] = data['Fecha-I'].apply(get_period_of_day)
     
-    # Generate high season feature
+    # Generar característica de temporada alta
     def is_high_season(fecha: str) -> int:
         fecha_año = int(fecha.split('-')[0])
         fecha = datetime.strptime(fecha, '%Y-%m-%d %H:%M:%S')
@@ -124,9 +126,9 @@ if __name__ == "__main__":
 
     data['high_season'] = data['Fecha-I'].apply(is_high_season)
     
-    # Generate min_diff and delay features
+    # Generar características de min_diff y delay
     def get_min_diff(data):
-        fecha_o = datetime.strptime(data['Fecha-0'], '%Y-%m-%d %H:%M:%S')
+        fecha_o = datetime.strptime(data['Fecha-O'], '%Y-%m-%d %H:%M:%S')
         fecha_i = datetime.strptime(data['Fecha-I'], '%Y-%m-%d %H:%M:%S')
         min_diff = ((fecha_o - fecha_i).total_seconds()) / 60
         return min_diff
@@ -136,28 +138,28 @@ if __name__ == "__main__":
     threshold_in_minutes = 15
     data['delay'] = np.where(data['min_diff'] > threshold_in_minutes, 1, 0)
     
-    # Initialize model
+    # Inicializar modelo
     model = DelayModel()
     
-    # Preprocess data
+    # Preprocesar datos
     features, target = model.preprocess(data, target_column='delay')
     
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
+    # Dividir datos
+    x_train, x_test, y_train, y_test = train_test_split(features, target, test_size=0.33, random_state=42)
     
-    # Fit model
-    model.fit(X_train, y_train)
+    # Ajustar modelo
+    model.fit(x_train, y_train)
     
-    # Predict
-    predictions = model.predict(X_test)
+    # Predecir
+    predictions = model.predict(x_test)
     
-    # Evaluate
+    # Evaluar
     accuracy = accuracy_score(y_test, predictions)
     print(f"Model accuracy: {accuracy}")
     
-    # Data Analysis: First Sight
-    # Distribution by Day
-    flights_by_day = data['day'].value_counts()
+    # Análisis de Datos: Primera Vista
+    # Distribución por Día
+    flights_by_day = data['DIA'].value_counts()
     plt.figure(figsize=(18, 2))
     sns.set(style="darkgrid")
     sns.barplot(x=flights_by_day.index, y=flights_by_day.values, color="lightblue", alpha=0.3)
@@ -167,8 +169,8 @@ if __name__ == "__main__":
     plt.xticks(rotation=90)
     plt.show()
 
-    # Distribution by Month
-    flights_by_month = data['month'].value_counts()
+    # Distribución por Mes
+    flights_by_month = data['MES'].value_counts()
     plt.figure(figsize=(18, 2))
     sns.set(style="darkgrid")
     sns.barplot(x=flights_by_month.index, y=flights_by_month.values, color="lightblue", alpha=0.8)
@@ -178,8 +180,8 @@ if __name__ == "__main__":
     plt.xticks(rotation=90)
     plt.show()
 
-    # Distribution by Day of the Week
-    flights_by_day_in_week = data['day_of_week'].value_counts()
+    # Distribución por Día de la Semana
+    flights_by_day_in_week = data['DIANOM'].value_counts()
     days = flights_by_day_in_week.index
     values_by_day = flights_by_day_in_week.values
     plt.figure(figsize=(18, 2))
@@ -191,7 +193,7 @@ if __name__ == "__main__":
     plt.xticks(rotation=90)
     plt.show()
 
-    # Distribution by Type of Flight
+    # Distribución por Tipo de Vuelo
     flights_by_type = data['TIPOVUELO'].value_counts()
     plt.figure(figsize=(10, 2))
     sns.set(style="darkgrid")
@@ -201,7 +203,7 @@ if __name__ == "__main__":
     plt.xlabel("Type", fontsize=12)
     plt.show()
 
-    # Distribution by Destination
+    # Distribución por Destino
     flight_by_destination = data['SIGLADES'].value_counts()
     plt.figure(figsize=(10, 2))
     sns.set(style="darkgrid")
@@ -211,7 +213,8 @@ if __name__ == "__main__":
     plt.xlabel("Destination", fontsize=12)
     plt.xticks(rotation=90)
     plt.show()
-       # Data Analysis: Second Sight
+
+    # Análisis de Datos: Segunda Vista
     def get_rate_from_column(data, column):
         delays = {}
         for _, row in data.iterrows():
@@ -321,4 +324,4 @@ if __name__ == "__main__":
     plt.ylabel("Delay Rate (%)", fontsize=12)
     plt.xlabel("Period", fontsize=12)
     plt.ylim(0, 7)
-    plt.show()   
+    plt.show()
