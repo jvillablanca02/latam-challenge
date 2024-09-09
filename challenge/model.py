@@ -1,4 +1,3 @@
-  
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,15 +18,16 @@ def get_rate_from_column(data, column):
     return rates.reset_index().rename(columns={column: 'Tasa (%)', 'index': column})
 
 # Cargar y preparar los datos
-data = pd.read_csv('data/data.csv')  
-training_data = shuffle(data[['OPERA', 'MES', 'TIPOVUELO', 'SIGLADES', 'DIANOM', 'delay']], random_state=111)
-features = pd.concat([
-    pd.get_dummies(data['OPERA'], prefix='OPERA'),
-    pd.get_dummies(data['TIPOVUELO'], prefix='TIPOVUELO'),
-    pd.get_dummies(data['MES'], prefix='MES')
-], axis=1)
-target = data['delay']
-x_train2, x_test2, y_train2, y_test2 = train_test_split(features, target, test_size=0.33, random_state=42)
+def load_and_prepare_data(filepath):
+    data = pd.read_csv(filepath)
+    training_data = shuffle(data[['OPERA', 'MES', 'TIPOVUELO', 'SIGLADES', 'DIANOM', 'delay']], random_state=111)
+    features = pd.concat([
+        pd.get_dummies(data['OPERA'], prefix='OPERA'),
+        pd.get_dummies(data['TIPOVUELO'], prefix='TIPOVUELO'),
+        pd.get_dummies(data['MES'], prefix='MES')
+    ], axis=1)
+    target = data['delay']
+    return train_test_split(features, target, test_size=0.33, random_state=42)
 
 # Visualización de tasas de retraso
 def plot_delay_rate(data, column, title, ylim):
@@ -43,78 +43,47 @@ def plot_delay_rate(data, column, title, ylim):
         bar_plot.text(index, value, f'{value:.2f}', color='black', ha="center")
     plt.show()
 
-plot_delay_rate(data, 'MES', 'Delay Rate by Month', 10)
-plot_delay_rate(data, 'DIANOM', 'Delay Rate by Day', 7)
-plot_delay_rate(data, 'high_season', 'Delay Rate by Season', 6)
-plot_delay_rate(data, 'TIPOVUELO', 'Delay Rate by Flight Type', 7)
+# Modelos y evaluación
+def train_and_evaluate_models(x_train, y_train, x_test, y_test):
+    # Modelo XGBoost con balance
+    scale = len(y_train[y_train == 0]) / len(y_train[y_train == 1])
+    xgb_model_2 = xgb.XGBClassifier(random_state=1, learning_rate=0.01, scale_pos_weight=scale)
+    xgb_model_2.fit(x_train, y_train)
+    xgboost_y_preds_2 = xgb_model_2.predict(x_test)
+    print("XGBoost with Balance Classification Report:")
+    print(classification_report(y_test, xgboost_y_preds_2))
+    xgb_cm_2 = confusion_matrix(y_test, xgboost_y_preds_2)
+    sns.heatmap(xgb_cm_2, annot=True, fmt='d', cmap='Blues')
+    plt.title('XGBoost with Balance Confusion Matrix')
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+    plt.show()
+    plot_importance(xgb_model_2)
+    plt.title('Feature Importance - XGBoost with Balance')
+    plt.show()
 
-# Modelo XGBoost con balance
-scale = len(y_train2[y_train2 == 0]) / len(y_train2[y_train2 == 1])
-xgb_model_2 = xgb.XGBClassifier(random_state=1, learning_rate=0.01, scale_pos_weight=scale)
-xgb_model_2.fit(x_train2, y_train2)
-xgboost_y_preds_2 = xgb_model_2.predict(x_test2)
+    # Modelo de Regresión Logística con balance
+    n_y0 = len(y_train[y_train == 0])
+    n_y1 = len(y_train[y_train == 1])
+    reg_model_2 = LogisticRegression(class_weight={1: n_y0/len(y_train), 0: n_y1/len(y_train)})
+    reg_model_2.fit(x_train, y_train)
+    reg_y_preds_2 = reg_model_2.predict(x_test)
+    print("Logistic Regression with Balance Classification Report:")
+    print(classification_report(y_test, reg_y_preds_2))
+    reg_cm_2 = confusion_matrix(y_test, reg_y_preds_2)
+    sns.heatmap(reg_cm_2, annot=True, fmt='d', cmap='Blues')
+    plt.title('Logistic Regression with Balance Confusion Matrix')
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+    plt.show()
 
-# Reporte de clasificación y matriz de confusión para XGBoost con balance
-print("XGBoost with Balance Classification Report:")
-print(classification_report(y_test2, xgboost_y_preds_2))
-xgb_cm_2 = confusion_matrix(y_test2, xgboost_y_preds_2)
-sns.heatmap(xgb_cm_2, annot=True, fmt='d', cmap='Blues')
-plt.title('XGBoost with Balance Confusion Matrix')
-plt.xlabel('Predicted')
-plt.ylabel('Actual')
-plt.show()
-
-# Importancia de características para XGBoost con balance
-plot_importance(xgb_model_2)
-plt.title('Feature Importance - XGBoost with Balance')
-plt.show()
-
-# Modelo XGBoost sin balance
-xgb_model_3 = xgb.XGBClassifier(random_state=1, learning_rate=0.01)
-xgb_model_3.fit(x_train2, y_train2)
-xgboost_y_preds_3 = xgb_model_3.predict(x_test2)
-
-# Reporte de clasificación y matriz de confusión para XGBoost sin balance
-print("XGBoost without Balance Classification Report:")
-print(classification_report(y_test2, xgboost_y_preds_3))
-xgb_cm_3 = confusion_matrix(y_test2, xgboost_y_preds_3)
-sns.heatmap(xgb_cm_3, annot=True, fmt='d', cmap='Blues')
-plt.title('XGBoost without Balance Confusion Matrix')
-plt.xlabel('Predicted')
-plt.ylabel('Actual')
-plt.show()
-
-# Modelo de Regresión Logística con balance
-n_y0 = len(y_train2[y_train2 == 0])
-n_y1 = len(y_train2[y_train2 == 1])
-reg_model_2 = LogisticRegression(class_weight={1: n_y0/len(y_train2), 0: n_y1/len(y_train2)})
-reg_model_2.fit(x_train2, y_train2)
-reg_y_preds_2 = reg_model_2.predict(x_test2)
-
-# Reporte de clasificación y matriz de confusión para Regresión Logística con balance
-print("Logistic Regression with Balance Classification Report:")
-print(classification_report(y_test2, reg_y_preds_2))
-reg_cm_2 = confusion_matrix(y_test2, reg_y_preds_2)
-sns.heatmap(reg_cm_2, annot=True, fmt='d', cmap='Blues')
-plt.title('Logistic Regression with Balance Confusion Matrix')
-plt.xlabel('Predicted')
-plt.ylabel('Actual')
-plt.show()
-
-# Modelo de Regresión Logística sin balance
-reg_model_3 = LogisticRegression()
-reg_model_3.fit(x_train2, y_train2)
-reg_y_preds_3 = reg_model_3.predict(x_test2)
-
-# Reporte de clasificación y matriz de confusión para Regresión Logística sin balance
-print("Logistic Regression without Balance Classification Report:")
-print(classification_report(y_test2, reg_y_preds_3))
-reg_cm_3 = confusion_matrix(y_test2, reg_y_preds_3)
-sns.heatmap(reg_cm_3, annot=True, fmt='d', cmap='Blues')
-plt.title('Logistic Regression without Balance Confusion Matrix')
-plt.xlabel('Predicted')
-plt.ylabel('Actual')
-plt.show()
+    # Visualización de la importancia de características para Regresión Logística
+    coefficients = pd.DataFrame({"Feature": x_train.columns, "Coefficient": reg_model_2.coef_[0]})
+    coefficients = coefficients.sort_values(by="Coefficient", ascending=False)
+    plt.figure(figsize=(10, 8))
+    sns.barplot(x="Coefficient", y="Feature", data=coefficients)
+    plt.title('Feature Importance - Logistic Regression with Balance')
+    plt.show()
 
 # Función para determinar si hay retraso
 def is_delay(departure, arrival):
@@ -122,17 +91,22 @@ def is_delay(departure, arrival):
     return 1 if min_diff > 15 else 0
 
 # Ejemplo de uso de la función is_delay
-departure_time = datetime.strptime('2023-09-09 14:30:00', '%Y-%m-%d %H:%M:%S')
-arrival_time = datetime.strptime('2023-09-09 14:50:00', '%Y-%m-%d %H:%M:%S')
-delay_status = is_delay(departure_time, arrival_time)
-print(f"Delay status: {delay_status}")
+def example_is_delay():
+    departure_time = datetime.strptime('2023-09-09 14:30:00', '%Y-%m-%d %H:%M:%S')
+    arrival_time = datetime.strptime('2023-09-09 14:50:00', '%Y-%m-%d %H:%M:%S')
+    delay_status = is_delay(departure_time, arrival_time)
+    print(f"Delay status: {delay_status}")
 
-# Visualización de la importancia de características para Regresión Logística
-coefficients = pd.DataFrame({"Feature": features.columns, "Coefficient": reg_model_3.coef_[0]})
-coefficients = coefficients.sort_values(by="Coefficient", ascending=False)
-plt.figure(figsize=(10, 8))
-sns.barplot(x="Coefficient", y="Feature", data=coefficients)
-plt.title('Feature Importance - Logistic Regression without Balance')
-plt.show()
- 
- 
+# Función principal para ejecutar todo el proceso.
+def main():
+    x_train, x_test, y_train, y_test = load_and_prepare_data('data/data.csv')
+    plot_delay_rate(data, 'MES', 'Delay Rate by Month', 10)
+    plot_delay_rate(data, 'DIANOM', 'Delay Rate by Day', 7)
+    plot_delay_rate(data, 'high_season', 'Delay Rate by Season', 6)
+    plot_delay_rate(data, 'TIPOVUELO', 'Delay Rate by Flight Type', 7)
+    train_and_evaluate_models(x_train, y_train, x_test, y_test)
+    example_is_delay()
+
+if __name__ == "__main__":
+    main()
+
