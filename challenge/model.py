@@ -199,3 +199,126 @@ if __name__ == "__main__":
     plt.title("Flights by Type")
     plt.ylabel("Flights", fontsize=12)
     plt.xlabel("Type", fontsize=12)
+    plt.show()
+
+    # Distribution by Destination
+    flight_by_destination = data['SIGLADES'].value_counts()
+    plt.figure(figsize=(10, 2))
+    sns.set(style="darkgrid")
+    sns.barplot(x=flight_by_destination.index, y=flight_by_destination.values, color="lightblue", alpha=0.8)
+    plt.title("Flight by Destination")
+    plt.ylabel("Flights", fontsize=12)
+    plt.xlabel("Destination", fontsize=12)
+    plt.xticks(rotation=90)
+    plt.show()
+       # Data Analysis: Second Sight
+    def get_rate_from_column(data, column):
+        delays = {}
+        for _, row in data.iterrows():
+            if row['delay'] == 1:
+                if row[column] not in delays:
+                    delays[row[column]] = 1
+                else:
+                    delays[row[column]] += 1
+        total = data[column].value_counts().to_dict()
+        rates = {}
+        for name, total in total.items():
+            if name in delays:
+                rates[name] = round((delays[name] / total) * 100, 2)
+            else:
+                rates[name] = 0
+        return pd.DataFrame.from_dict(data=rates, orient='index', columns=['Tasa (%)'])
+
+    # Tasa de retraso por destino
+    destination_rate = get_rate_from_column(data, 'SIGLADES')
+    destination_rate_values = data['SIGLADES'].value_counts().index
+
+    plt.figure(figsize=(20, 5))
+    sns.set(style="darkgrid")
+    sns.barplot(destination_rate_values, destination_rate['Tasa (%)'], alpha=0.75)
+    plt.title("Delay Rate by Destination")
+    plt.ylabel("Delay Rate (%)", fontsize=12)
+    plt.xlabel("Destination", fontsize=12)
+    plt.xticks(rotation=90)
+    plt.show()
+
+    # Tasa de retraso por aerolínea
+    airlines_rate = get_rate_from_column(data, 'OPERA')
+    airlines_rate_values = data['OPERA'].value_counts().index
+
+    plt.figure(figsize=(20, 5))
+    sns.set(style="darkgrid")
+    sns.barplot(airlines_rate_values, airlines_rate['Tasa (%)'], alpha=0.75)
+    plt.title("Delay Rate by Airline")
+    plt.ylabel("Delay Rate (%)", fontsize=12)
+    plt.xlabel("Airline", fontsize=12)
+    plt.xticks(rotation=90)
+    plt.show()
+
+    # Tasa de retraso por mes
+    month_rate = get_rate_from_column(data, 'MES')
+    month_rate_values = data['MES'].value_counts().index
+
+    plt.figure(figsize=(20, 5))
+    sns.set(style="darkgrid")
+    sns.barplot(month_rate_values, month_rate['Tasa (%)'], color='blue', alpha=0.75)
+    plt.title("Delay Rate by Month")
+    plt.ylabel("Delay Rate (%)", fontsize=12)
+    plt.xlabel("Month", fontsize=12)
+    plt.xticks(rotation=90)
+    plt.ylim(0, 10)
+    plt.show()
+
+    # Tasa de retraso por día
+    days_rate = get_rate_from_column(data, 'DIANOM')
+    days_rate_values = data['DIANOM'].value_counts().index
+
+    plt.figure(figsize=(20, 5))
+    sns.set(style="darkgrid")
+    sns.barplot(days_rate_values, days_rate['Tasa (%)'], color='blue', alpha=0.75)
+    plt.title("Delay Rate by Day")
+    plt.ylabel("Delay Rate (%)", fontsize=12)
+    plt.xlabel("Days", fontsize=12)
+    plt.xticks(rotation=90)
+    plt.ylim(0, 7)
+    plt.show()
+
+    # Tasa de retraso por temporada alta
+    high_season_rate = get_rate_from_column(data, 'high_season')
+    high_season_rate_values = data['high_season'].value_counts().index
+
+    plt.figure(figsize=(5, 2))
+    sns.set(style="darkgrid")
+    sns.barplot(['no', 'yes'], high_season_rate['Tasa (%)'])
+    plt.title("Delay Rate by Season")
+    plt.ylabel("Delay Rate (%)", fontsize=12)
+    plt.xlabel("High Season", fontsize=12)
+    plt.xticks(rotation=90)
+    plt.ylim(0, 7)
+    plt.show()
+
+    # Tasa de retraso por tipo de vuelo
+    flight_type_rate = get_rate_from_column(data, 'TIPOVUELO')
+    flight_type_rate_values = data['TIPOVUELO'].value_counts().index
+
+    plt.figure(figsize=(5, 2))
+    sns.set(style="darkgrid")
+    sns.barplot(flight_type_rate_values, flight_type_rate['Tasa (%)'])
+    plt.title("Delay Rate by Flight Type")
+    plt.ylabel("Delay Rate (%)", fontsize=12)
+    plt.xlabel("Flight Type", fontsize=12)
+    plt.ylim(0, 7)
+    plt.show()
+
+    # Tasa de retraso por período del día
+    period_day_rate = get_rate_from_column(data, 'period_day')
+    period_day_rate_values = data['period_day'].value_counts().index
+
+    plt.figure(figsize=(5, 2))
+    sns.set(style="darkgrid")
+    sns.barplot(period_day_rate_values, period_day_rate['Tasa (%)'])
+    plt.title("Delay Rate by Period of Day")
+    plt.ylabel("Delay Rate (%)", fontsize=12)
+    plt.xlabel("Period", fontsize=12)
+    plt.ylim(0, 7)
+    plt.show()   
