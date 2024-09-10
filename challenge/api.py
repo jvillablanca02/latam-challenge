@@ -4,7 +4,7 @@ import joblib
 import numpy as np
 
 # Cargar el modelo entrenado
-model = joblib.load("models/finalized_model.pkl")
+model = joblib.load("challenge/finalized_model.pkl")
 
 # Crear la aplicación FastAPI
 app = FastAPI()
