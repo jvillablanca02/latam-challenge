@@ -1,112 +1,106 @@
+
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import seaborn as sns
+import warnings
+from datetime import datetime, timedelta
+import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
-from sklearn.metrics import confusion_matrix, classification_report
-import xgboost as xgb
-from xgboost import plot_importance
+from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.linear_model import LogisticRegression
-from datetime import datetime
 
-# Función para calcular la tasa de retraso por columna
-def get_rate_from_column(data, column):
-    delays = data[data['delay'] == 1][column].value_counts()
-    total = data[column].value_counts()
-    rates = (delays / total).fillna(0) * 100
-    return rates.reset_index().rename(columns={column: 'Tasa (%)', 'index': column})
+warnings.filterwarnings('ignore')
 
-# Cargar y preparar los datos
-def load_and_prepare_data(filepath):
-    data = pd.read_csv(filepath)
-    training_data = shuffle(data[['OPERA', 'MES', 'TIPOVUELO', 'SIGLADES', 'DIANOM', 'delay']], random_state=111)
-    features = pd.concat([
-        pd.get_dummies(data['OPERA'], prefix='OPERA'),
-        pd.get_dummies(data['TIPOVUELO'], prefix='TIPOVUELO'),
-        pd.get_dummies(data['MES'], prefix='MES')
-    ], axis=1)
-    target = data['delay']
-    return train_test_split(features, target, test_size=0.33, random_state=42)
+# Cargar datos
+df = pd.read_csv('.../data/data.csv')
+print(df.head())
 
-# Visualización de tasas de retraso
-def plot_delay_rate(data, column, title, ylim):
-    rate = get_rate_from_column(data, column)
-    plt.figure(figsize=(10, 5))
-    sns.set(style="darkgrid")
-    bar_plot = sns.barplot(x=column, y='Tasa (%)', data=rate, alpha=0.75)
-    plt.title(title, fontsize=14)
-    plt.ylabel('Delay Rate [%]', fontsize=12)
-    plt.xlabel(column, fontsize=12)
-    plt.ylim(0, ylim)
-    for index, value in enumerate(rate['Tasa (%)']):
-        bar_plot.text(index, value, f'{value:.2f}', color='black', ha="center")
-    plt.show()
+# Generación de características
+def get_day_period(date):
+    morning_min = datetime.strptime("05:00", "%H:%M").time()
+    morning_max = datetime.strptime("11:59", "%H:%M").time()
+    afternoon_min = datetime.strptime("12:00", "%H:%M").time()
+    afternoon_max = datetime.strptime("18:59", "%H:%M").time()
+    evening_min = datetime.strptime("19:00", "%H:%M").time()
+    evening_max = datetime.strptime("23:59", "%H:%M").time()
+    night_min = datetime.strptime("00:00", "%H:%M").time()
+    night_max = datetime.strptime("04:59", "%H:%M").time()
 
-# Modelos y evaluación
-def train_and_evaluate_models(x_train, y_train, x_test, y_test):
-    # Modelo XGBoost con balance
-    scale = len(y_train[y_train == 0]) / len(y_train[y_train == 1])
-    xgb_model_2 = xgb.XGBClassifier(random_state=1, learning_rate=0.01, scale_pos_weight=scale)
-    xgb_model_2.fit(x_train, y_train)
-    xgboost_y_preds_2 = xgb_model_2.predict(x_test)
-    print("XGBoost with Balance Classification Report:")
-    print(classification_report(y_test, xgboost_y_preds_2))
-    xgb_cm_2 = confusion_matrix(y_test, xgboost_y_preds_2)
-    sns.heatmap(xgb_cm_2, annot=True, fmt='d', cmap='Blues')
-    plt.title('XGBoost with Balance Confusion Matrix')
-    plt.xlabel('Predicted')
-    plt.ylabel('Actual')
-    plt.show()
-    plot_importance(xgb_model_2)
-    plt.title('Feature Importance - XGBoost with Balance')
-    plt.show()
+    if morning_min <= date.time() <= morning_max:
+        return 'morning'
+    elif afternoon_min <= date.time() <= afternoon_max:
+        return 'afternoon'
+    elif evening_min <= date.time() <= evening_max:
+        return 'evening'
+    else:
+        return 'night'
 
-    # Modelo de Regresión Logística con balance
-    n_y0 = len(y_train[y_train == 0])
-    n_y1 = len(y_train[y_train == 1])
-    reg_model_2 = LogisticRegression(class_weight={1: n_y0/len(y_train), 0: n_y1/len(y_train)})
-    reg_model_2.fit(x_train, y_train)
-    reg_y_preds_2 = reg_model_2.predict(x_test)
-    print("Logistic Regression with Balance Classification Report:")
-    print(classification_report(y_test, reg_y_preds_2))
-    reg_cm_2 = confusion_matrix(y_test, reg_y_preds_2)
-    sns.heatmap(reg_cm_2, annot=True, fmt='d', cmap='Blues')
-    plt.title('Logistic Regression with Balance Confusion Matrix')
-    plt.xlabel('Predicted')
-    plt.ylabel('Actual')
-    plt.show()
+df['period_day'] = df['Fecha-I'].apply(lambda x: get_day_period(datetime.strptime(x, '%Y-%m-%d %H:%M:%S.%f')))
 
-    # Visualización de la importancia de características para Regresión Logística
-    coefficients = pd.DataFrame({"Feature": x_train.columns, "Coefficient": reg_model_2.coef_[0]})
-    coefficients = coefficients.sort_values(by="Coefficient", ascending=False)
-    plt.figure(figsize=(10, 8))
-    sns.barplot(x="Coefficient", y="Feature", data=coefficients)
-    plt.title('Feature Importance - Logistic Regression with Balance')
-    plt.show()
+def is_high_season(fecha):
+    fecha_año = int(fecha.split('-')[0])
+    fecha = datetime.strptime(fecha, '%Y-%m-%d %H:%M:%S.%f')
+    
+    rangel_min = datetime.strptime('15-Dec', '%d-%b').replace(year=fecha_año)
+    rangel_max = datetime.strptime('31-Dec', '%d-%b').replace(year=fecha_año)
+    range2_min = datetime.strptime('01-Jan', '%d-%b').replace(year=fecha_año)
+    range2_max = datetime.strptime('03-Mar', '%d-%b').replace(year=fecha_año)
+    range3_min = datetime.strptime('15-Jul', '%d-%b').replace(year=fecha_año)
+    range3_max = datetime.strptime('31-Jul', '%d-%b').replace(year=fecha_año)
+    range4_min = datetime.strptime('11-Sep', '%d-%b').replace(year=fecha_año)
+    range4_max = datetime.strptime('30-Sep', '%d-%b').replace(year=fecha_año)
 
-# Función para determinar si hay retraso
-def is_delay(departure, arrival):
-    min_diff = (arrival - departure).total_seconds() / 60
-    return 1 if min_diff > 15 else 0
+    if ((rangel_min <= fecha <= rangel_max) or
+        (range2_min <= fecha <= range2_max) or
+        (range3_min <= fecha <= range3_max) or
+        (range4_min <= fecha <= range4_max)):
+        return 1
+    else:
+        return 0
 
-# Ejemplo de uso de la función is_delay
-def example_is_delay():
-    departure_time = datetime.strptime('2023-09-09 14:30:00', '%Y-%m-%d %H:%M:%S')
-    arrival_time = datetime.strptime('2023-09-09 14:50:00', '%Y-%m-%d %H:%M:%S')
-    delay_status = is_delay(departure_time, arrival_time)
-    print(f"Delay status: {delay_status}")
+df['high_season'] = df['Fecha-I'].apply(lambda x: is_high_season(x))
 
-# Función principal para ejecutar todo el proceso.
-def main():
-    x_train, x_test, y_train, y_test = load_and_prepare_data('data/data.csv')
-    plot_delay_rate(data, 'MES', 'Delay Rate by Month', 10)
-    plot_delay_rate(data, 'DIANOM', 'Delay Rate by Day', 7)
-    plot_delay_rate(data, 'high_season', 'Delay Rate by Season', 6)
-    plot_delay_rate(data, 'TIPOVUELO', 'Delay Rate by Flight Type', 7)
-    train_and_evaluate_models(x_train, y_train, x_test, y_test)
-    example_is_delay()
+def get_min_diff(data):
+    fecha_o = datetime.strptime(data["Fecha-O"], '%Y-%m-%d %H:%M:%S')
+    fecha_i = datetime.strptime(data['Fecha-I'], '%Y-%m-%d %H:%M:%S')
+    min_diff = ((fecha_o - fecha_i).total_seconds()) / 60
+    return min_diff
 
-if __name__ == "__main__":
-    main()
+df['min_diff'] = df.apply(get_min_diff, axis=1)
 
+threshold_in_minutes = 15
+df['delay'] = np.where(df['min_diff'] > threshold_in_minutes, 1, 0)
+
+# Selección de características
+top_features = ['OPERA_Latin American Wings', 'MES_7', 'MES_10', 'OPERA_Grupo LATAM', 'MES_12', 'TIPOVUELO_1', 'MES_4', 'MES_11', 'OPERA_Sky Airline', 'OPERA_Copa Air']
+
+# 6.a Data Split
+X_train2, X_test2, y_train2, y_test2 = train_test_split(df[top_features], df['delay'], test_size=0.33, random_state=42)
+
+# Balanceo de clases
+n_y0 = len(y_train2[y_train2 == 0])
+n_y1 = len(y_train2[y_train2 == 1])
+scale = n_y0 / n_y1
+
+# 6.b Model Selection
+
+## 6.b.i XGBoost with Feature Importance and with Balance
+xgb_model2 = xgb.XGBClassifier(scale_pos_weight=scale, learning_rate=0.01, n_estimators=2000, max_depth=4)
+xgb_model2.fit(X_train2, y_train2)
+y_pred5 = xgb_model2.predict(X_test2)
+
+## 6.b.ii XGBoost with Feature Importance but without Balance
+xgb_model3 = xgb.XGBClassifier(learning_rate=0.01)
+xgb_model3.fit(X_train2, y_train2)
+y_pred6 = xgb_model3.predict(X_test2)
+
+## 6.b.iii Logistic Regression with Feature Importance and with Balance
+reg_model_1 = LogisticRegression(class_weight='balanced')
+reg_model_1.fit(X_train2, y_train2)
+y_pred7 = reg_model_1.predict(X_test2)
+
+# Evaluación del modelo
+print(confusion_matrix(y_test2, y_pred5))
+print(classification_report(y_test2, y_pred5))
