@@ -1,4 +1,4 @@
-
+import joblib
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -104,3 +104,9 @@ y_pred7 = reg_model_1.predict(X_test2)
 # Evaluación del modelo
 print(confusion_matrix(y_test2, y_pred5))
 print(classification_report(y_test2, y_pred5))
+
+# Guardar el modelo XGBoost
+joblib.dump(xgb_model2, "xgb_model.pkl")
+
+# Guardar el modelo Logistic Regression
+joblib.dump(reg_model_1, "logistic_model.pkl")
