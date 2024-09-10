@@ -245,6 +245,9 @@ import xgboost as xgb
 xgb_model = xgb.XGBClassifier(random_state=1, learning_rate=0.01)
 xgb_model.fit(x_train, y_train)
 
+# Guardar el modelo entrenado en un archivo .pkl
+joblib.dump(xgb_model, "challenge/finalized_model.pkl")
+
 # Realizar predicciones
 xgboost_y_preds = xgb_model.predict(x_test)
 xgboost_y_preds = [1 if y_pred > 0.5 else 0 for y_pred in xgboost_y_preds]
