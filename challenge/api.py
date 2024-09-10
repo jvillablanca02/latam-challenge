@@ -1,57 +1,47 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-import pandas as pd
-import xgboost as xgb
-from sklearn.linear_model import LogisticRegression
+import uvicorn
+from fastapi import FastAPI
 import joblib
+import pandas as pd
+from pydantic import BaseModel
 
 app = FastAPI()
 
-# Cargar los modelos previamente entrenados
+# Cargar los modelos entrenados
 xgb_model = joblib.load("xgb_model.pkl")
 logistic_model = joblib.load("logistic_model.pkl")
 
-class FlightData(BaseModel):
-    OPERA: str
-    MES: int
-    TIPOVUELO: str
-    SIGLADES: str
-    DIANOM: str
+# Definir el esquema de entrada
+class PredictionRequest(BaseModel):
+    OPERA_Latin_American_Wings: float
+    MES_7: float
+    MES_10: float
+    OPERA_Grupo_LATAM: float
+    MES_12: float
+    TIPOVUELO_1: float
+    MES_4: float
+    MES_11: float
+    OPERA_Sky_Airline: float
+    OPERA_Copa_Air: float
 
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
+# Endpoint de salud
+@app.get("/health", status_code=200)
+async def get_health() -> dict:
+    return {"status": "OK"}
 
-@app.post("/predict")
-def predict_delay(data: FlightData):
-    try:
-        # Convertir los datos de entrada en un DataFrame
-        input_data = pd.DataFrame([data.dict()])
+# Endpoint de predicción con XGBoost
+@app.post("/predict_xgb", status_code=200)
+async def post_predict_xgb(request: PredictionRequest) -> dict:
+    data = pd.DataFrame([request.dict().values()], columns=request.dict().keys())
+    prediction = xgb_model.predict(data)
+    return {"prediction": int(prediction[0])}
 
-        # Preprocesar los datos de entrada de la misma manera que se hizo durante el entrenamiento
-        input_data = pd.concat([
-            pd.get_dummies(input_data['OPERA'], prefix='OPERA'),
-            pd.get_dummies(input_data['TIPOVUELO'], prefix='TIPOVUELO'),
-            pd.get_dummies(input_data['MES'], prefix='MES')
-        ], axis=1)
-
-        # Asegurarse de que las columnas coincidan con las del modelo entrenado
-        missing_cols = set(xgb_model.feature_names) - set(input_data.columns)
-        for col in missing_cols:
-            input_data[col] = 0
-        input_data = input_data[xgb_model.feature_names]
-
-        # Realizar la predicción con ambos modelos
-        xgb_prediction = xgb_model.predict(input_data)
-        logistic_prediction = logistic_model.predict(input_data)
-
-        return {
-            "xgb_prediction": int(xgb_prediction[0]),
-            "logistic_prediction": int(logistic_prediction[0])
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+# Endpoint de predicción con Logistic Regression
+@app.post("/predict_logistic", status_code=200)
+async def post_predict_logistic(request: PredictionRequest) -> dict:
+    data = pd.DataFrame([request.dict().values()], columns=request.dict().keys())
+    prediction = logistic_model.predict(data)
+    return {"prediction": int(prediction[0])}
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
