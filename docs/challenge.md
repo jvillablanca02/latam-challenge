@@ -1,16 +1,17 @@
-# Part 1
+# Parte 1
 
-## Notebook `.ipnyb` improvements
+## Notebook `.ipnyb` mejoras
 
-### 1. Fix plotting issues
+### 1. Solucionar problemas de trazado
 
-The function `sns.barplot()` expects positional arguments. I had to add the `x=` and `y=` positional arguments to fix the plots.
+La función sns.barplot() espera argumentos posicionales. Tuve que agregar los argumentos posicionales x= y y= para corregir los gráficos.
 
-### 2. Code cleaning
+### 2. Limpieza de código
 
 **Added constant variables**
 
-It is not necessary to declare the font size in every plot, it can be once it the beginning.
+No es necesario declarar el tamaño de la fuente en cada gráfico, se puede hacer una vez al principio.
+
 
 ```python
 # Set the default font size
