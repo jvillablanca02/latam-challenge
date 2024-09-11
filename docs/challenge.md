@@ -146,24 +146,23 @@ despues
 
 [!NOTA] Se realizaron más mejoras en el notebook, pero decidí no documentar cada una de ellas. Para la versión completa, consulta el notebook presente en este repositorio de GitHub.
 
-4. Selección del Modelo
 Ventajas de XGBoost:
 Popularidad y Robustez:
-Estándar de la Industria: XGBoost es ampliamente utilizado en la industria debido a su rendimiento robusto y versatilidad en varios tipos de conjuntos de datos.
-Historial Comprobado: Tiene un historial comprobado en ganar numerosas competiciones de ciencia de datos y benchmarks.
+Estándar en la Industria: XGBoost es muy utilizado en la industria debido a su rendimiento sólido y su capacidad para manejar diversos tipos de conjuntos de datos.
+Historial de Éxitos: Ha demostrado su eficacia ganando numerosas competiciones de ciencia de datos y benchmarks.
 Manejo de Conjuntos de Datos Complejos:
-Escalabilidad: XGBoost está diseñado para manejar conjuntos de datos a gran escala de manera eficiente.
-Características Avanzadas: Incluye funcionalidades avanzadas como manejo de valores faltantes, regularización y procesamiento paralelo, lo que lo hace adecuado para conjuntos de datos más complejos que podríamos encontrar en el futuro.
+Escalabilidad: XGBoost está diseñado para manejar eficientemente conjuntos de datos a gran escala.
+Funciones Avanzadas: Ofrece funcionalidades avanzadas como manejo de valores faltantes, regularización y procesamiento paralelo, lo que lo hace adecuado para conjuntos de datos más complejos que podríamos encontrar en el futuro.
 Consideraciones para la Regresión Logística:
 Tiempo de Respuesta:
-Predicciones Más Rápidas: Los modelos de Regresión Logística generalmente son más rápidos en hacer predicciones debido a su simplicidad.
+Predicciones Más Rápidas: Los modelos de Regresión Logística suelen ser más rápidos en hacer predicciones debido a su simplicidad.
 Menor Costo Computacional: Requieren menos poder computacional, lo cual puede ser crucial si el tiempo de respuesta del servidor es un factor crítico en nuestra aplicación.
 Velocidad de Entrenamiento:
-Entrenamiento Más Rápido: La Regresión Logística típicamente entrena más rápido que XGBoost, especialmente en conjuntos de datos más pequeños. Esto puede ser ventajoso durante las fases de desarrollo y ajuste cuando se necesitan iteraciones rápidas.
+Entrenamiento Más Rápido: La Regresión Logística generalmente entrena más rápido que XGBoost, especialmente en conjuntos de datos más pequeños. Esto puede ser ventajoso durante las fases de desarrollo y ajuste cuando se necesitan iteraciones rápidas.
 Simplicidad:
 Menos Hiperparámetros: La Regresión Logística tiene menos hiperparámetros para ajustar, lo que puede simplificar el proceso de desarrollo del modelo y reducir el riesgo de sobreajuste.
 Conclusión
-Mientras que XGBoost ofrece mayor versatilidad y robustez para futuros conjuntos de datos más grandes y complejos, la elección de la Regresión Logística podría justificarse si el tiempo de respuesta del servidor y la eficiencia computacional son de suma importancia.
+Aunque XGBoost ofrece mayor versatilidad y robustez para futuros conjuntos de datos más grandes y complejos, la elección de la Regresión Logística podría justificarse si el tiempo de respuesta del servidor y la eficiencia computacional son de suma importancia.
 
 Decisión Final: Elegí XGBoost con las 10 principales características y balanceo de clases por su popularidad y versatilidad. Sin embargo, considera la Regresión Logística si el tiempo de respuesta del servidor se convierte en un factor crítico.
 
