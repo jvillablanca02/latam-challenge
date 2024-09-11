@@ -8,7 +8,7 @@ La función sns.barplot() espera argumentos posicionales. Tuve que agregar los a
 
 ### 2. Limpieza de código
 
-**Added constant variables**
+**Variables constantes agregadas**
 
 No es necesario declarar el tamaño de la fuente en cada gráfico, se puede hacer una vez al principio.
 
@@ -19,17 +19,15 @@ FONT_SIZE = 12
 plt.rcParams.update({'font.size': FONT_SIZE})
 ```
 
-The same can be done with the seaborn theme:
+Lo mismo se puede hacer con el tema seaborn:
 
 ```python
 sns.set_theme(style="darkgrid")
 ```
 
-**Code cleaning**
+**Limpieza de código**
 
-I also improved the efficiency and documentation of functions, take the `get_period_day` function as an example:
-
-Before
+También mejoré la eficiencia y la documentación de las funciones, tome la función `get_period_day` como ejemplo:
 
 ```python
 def get_period_day(date):
@@ -54,7 +52,7 @@ def get_period_day(date):
         return 'noche'
 ```
 
-After
+Después
 
 ```python
 def get_period_day(date: str) -> str:
@@ -89,121 +87,101 @@ def get_period_day(date: str) -> str:
         return 'Invalid date format'
 ```
 
-**Incorrect Delay Rate Calculation**
+**Cálculo incorrecto de la tasa de retraso**
 
 
-The delay rate (%) variable was calculated incorrectly. It was computed as the total number of flights divided by the number of delays, which results in a ratio, not a percentage.
+La variable tasa de retraso (%) se calculó incorrectamente. Se calculó como el número total de vuelos dividido por el número de retrasos, lo que da como resultado una proporción, no un porcentaje.
 
-For example, a delay rate of 19 for Houston means that for every 19 total flights, there is 1 delayed flight. This does not accurately represent a percentage measure. Therefore, I corrected the calculation to be the number of delays divided by the total number of flights, which provides a consistent percentage measure for the plots.
+Por ejemplo, una tasa de retraso de 19 para Houston significa que por cada 19 vuelos totales, hay 1 vuelo retrasado. Esto no representa con precisión una medida porcentual. Por lo tanto, corregí el cálculo para que sea el número de retrasos dividido por el número total de vuelos, lo que proporciona una medida porcentual consistente para los gráficos.
 
-**Wrong top 10 features**
+**10 funciones principales incorrectas**
 
-The hardcoded top 10 features in the code were not the top 10 features from the feature importance. Also, these features were calculated before the class balancing. It could be better to automatically select the top 10 features from the feature importance, and do this after the class balancing. I choose to keep the original top 10 features because they were enough to successfuly pass the model tests.
+Las 10 características principales codificadas en el código no eran las 10 características principales según la importancia de la característica. Además, estas características se calcularon antes del equilibrio de clases. Podría ser mejor seleccionar automáticamente las 10 características principales a partir de la importancia de las características y hacerlo después del equilibrio de clases. Elegí mantener las 10 características principales originales porque fueron suficientes para pasar con éxito las pruebas del modelo.
 
-### 3. Improve plots
+### 3. Mejorar las parcelas
 
-There were plots where the x axis labels were wrongly rotated:
+Hubo gráficos donde las etiquetas del eje x estaban rotadas incorrectamente:
 
-Before
+Antes
 
 ![image](/docs/images/not_rotated_xlabels.png)
 
-After
+Despues
 
 ![image](/docs/images/rotated_xlabels.png)
 
-Also, there were plots where the there are several x values and it would have been better to rotate the plot for better analysis. For example:
+Además, hubo gráficos en los que hay varios valores de x y hubiera sido mejor rotar el gráfico para un mejor análisis. Por ejemplo:
 
-Before
+antes
 
 ![image](/docs/images/not_rotated_plot.png)
 
-After
+despues
 
 ![image](/docs/images/rotated_plot.png)
 
 Some plots were not rotated nor sorted:
 
-Before
+antes
 
 ![image](/docs/images/missing_sorting.png)
 
-After
+despues
 
 ![image](/docs/images/sorted.png)
 
-> [!NOTE] 
-> Here the delay rate (%) was calculated correctly as well.
+> [!NOTA] 
+> Aquí la tasa de retraso (%) también se calculó correctamente.
 
-The days of the week were not sorted and were in Spanish in the Delay Rate by Day of the Week plot:
+Los días de la semana no estaban ordenados y estaban en español en el gráfico Tasa de retraso por día de la semana:
 
-Before
+Antes
 
 ![image](/docs/images/days_not_sorted.png)
 
 
-After
+despues
 
 ![image](/docs/images/days_sorted.png)
 
-> [!NOTE] 
-> More improvements were made on the notebook, but I decided to not document every improvement. For the full version, check the notebook present in this GitHub repository.
+[!NOTA] Se realizaron más mejoras en el notebook, pero decidí no documentar cada una de ellas. Para la versión completa, consulta el notebook presente en este repositorio de GitHub.
 
-### 4. Model selection
+4. Selección del Modelo
+Ventajas de XGBoost:
+Popularidad y Robustez:
+Estándar de la Industria: XGBoost es ampliamente utilizado en la industria debido a su rendimiento robusto y versatilidad en varios tipos de conjuntos de datos.
+Historial Comprobado: Tiene un historial comprobado en ganar numerosas competiciones de ciencia de datos y benchmarks.
+Manejo de Conjuntos de Datos Complejos:
+Escalabilidad: XGBoost está diseñado para manejar conjuntos de datos a gran escala de manera eficiente.
+Características Avanzadas: Incluye funcionalidades avanzadas como manejo de valores faltantes, regularización y procesamiento paralelo, lo que lo hace adecuado para conjuntos de datos más complejos que podríamos encontrar en el futuro.
+Consideraciones para la Regresión Logística:
+Tiempo de Respuesta:
+Predicciones Más Rápidas: Los modelos de Regresión Logística generalmente son más rápidos en hacer predicciones debido a su simplicidad.
+Menor Costo Computacional: Requieren menos poder computacional, lo cual puede ser crucial si el tiempo de respuesta del servidor es un factor crítico en nuestra aplicación.
+Velocidad de Entrenamiento:
+Entrenamiento Más Rápido: La Regresión Logística típicamente entrena más rápido que XGBoost, especialmente en conjuntos de datos más pequeños. Esto puede ser ventajoso durante las fases de desarrollo y ajuste cuando se necesitan iteraciones rápidas.
+Simplicidad:
+Menos Hiperparámetros: La Regresión Logística tiene menos hiperparámetros para ajustar, lo que puede simplificar el proceso de desarrollo del modelo y reducir el riesgo de sobreajuste.
+Conclusión
+Mientras que XGBoost ofrece mayor versatilidad y robustez para futuros conjuntos de datos más grandes y complejos, la elección de la Regresión Logística podría justificarse si el tiempo de respuesta del servidor y la eficiencia computacional son de suma importancia.
 
-#### Advantages of XGBoost:
+Decisión Final: Elegí XGBoost con las 10 principales características y balanceo de clases por su popularidad y versatilidad. Sin embargo, considera la Regresión Logística si el tiempo de respuesta del servidor se convierte en un factor crítico.
 
-1. Popularity and Robustness:
+Parte 3: Despliegue
+Para la fase de despliegue, utilicé los servicios de Google Cloud Platform (GCP). Específicamente, elegí:
 
-* **Industry Standard**: XGBoost is widely used in industry due to its robust performance and versatility across various types of datasets.
-* **Proven Track Record**: It has a proven track record in winning numerous data science competitions and benchmarks.
+Guardar el contenedor Docker como un artefacto en Google Container Registry (GCR), que es el almacenamiento de imágenes de contenedores privado de GCP.
+Usar Google Cloud Run, una plataforma de computación sin servidor, para desplegar y servir la aplicación web.
+Este enfoque ofrece los siguientes beneficios:
 
-2. Handling Complex Datasets:
+Escalabilidad: Cloud Run escala automáticamente el número de instancias de contenedores según el tráfico entrante, asegurando un uso eficiente de los recursos.
+Rentabilidad: Solo pagas por los recursos de computación utilizados durante el procesamiento de solicitudes.
+Simplicidad: Cloud Run abstrae gran parte de la gestión de infraestructura subyacente, permitiendo a los desarrolladores centrarse en el código de la aplicación.
+Despliegue Rápido: Con la imagen del contenedor almacenada en GCR, desplegar actualizaciones en Cloud Run es rápido y sencillo.
+Almacenamiento del Modelo
+En lugar de guardar el modelo en el repositorio de GitHub, opté por almacenarlo en Google Cloud Storage. Este enfoque es mejor por las siguientes razones:
 
-* **Scalability**: XGBoost is designed to handle large-scale datasets efficiently.
-* **Advanced Features**: It includes advanced functionalities like handling missing values, regularization, and parallel processing, making it suitable for more complex datasets we might encounter in the future.
-
-#### Consideration for Logistic Regression:
-
-1. Response Time:
-
-* **Faster Predictions**: Logistic Regression models are generally faster in making predictions due to their simplicity.
-* **Lower Computational Cost**: They require less computational power, which can be crucial if the server's response time is a critical factor in our application.
-
-2. Training Speed:
-
-* **Quicker Training**: Logistic Regression typically trains faster than XGBoost, especially on smaller datasets. This can be advantageous during the development and tuning phases when rapid iterations are needed.
-
-3. Simplicity:
-
-* **Fewer Hyperparameters**: Logistic Regression has fewer hyperparameters to tune, which can simplify the model development process and reduce the risk of overfitting.
-
-#### Conclusion
-
-While XGBoost offers greater versatility and robustness for future larger and more complex datasets, the choice of Logistic Regression could be justified if the server's response time and computational efficiency are of paramount importance.
-
-**Final Decision:** I chose `XGBoost` with top 10 features and class balancing for its popularity and versatility. However, consider Logistic Regression if server response time becomes a critical factor.
-
-# Part 3: Deployment
-
-For the deployment phase, I used Google Cloud Platform (GCP) services. Specifically, I chose to:
-
-1. Save the Docker container as an artifact in Google Container Registry (GCR), which is GCP's private container image storage.
-
-2. Use Google Cloud Run, a serverless compute platform, to deploy and serve the web application.
-
-This approach offers the following benefits:
-
-- **Scalability**: Cloud Run automatically scales the number of container instances based on incoming traffic, ensuring efficient resource usage.
-- **Cost-effectiveness**: You only pay for the actual compute resources used during request processing.
-- **Simplicity**: Cloud Run abstracts away much of the underlying infrastructure management, allowing developers to focus on the application code.
-- **Fast deployment**: With the container image stored in GCR, deploying updates to Cloud Run is quick and straightforward.
-
-### Model Storage
-
-Instead of saving the model in the GitHub repository, I opted to store it in Google Cloud Storage. This approach is better for the following reasons:
-
-1. **Version Control**: It's easier to manage and update different versions of the model independently from the application code.
-2. **Repository Size**: Large model files are kept out of the Git repository, ensuring it stays lean and quicker to clone or pull.
-3. **Access Control**: You can set fine-grained permissions on who can access or modify the model.
-4. **Runtime Integration**: The application can easily load the model from Cloud Storage during runtime, allowing for model updates without redeploying the entire application.
+Control de Versiones: Es más fácil gestionar y actualizar diferentes versiones del modelo independientemente del código de la aplicación.
+Tamaño del Repositorio: Los archivos grandes del modelo se mantienen fuera del repositorio de Git, asegurando que se mantenga ligero y más rápido de clonar o descargar.
+Control de Acceso: Puedes establecer permisos detallados sobre quién puede acceder o modificar el modelo.
+Integración en Tiempo de Ejecución: La aplicación puede cargar fácilmente el modelo desde Cloud Storage durante el tiempo de ejecución, permitiendo actualizaciones del modelo sin necesidad de volver a desplegar toda la aplicación.
